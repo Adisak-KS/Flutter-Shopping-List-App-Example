@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'package:shopping_list/data/categories.dart';
 import 'package:shopping_list/models/grocery_item.dart';
@@ -20,13 +21,17 @@ class _GroceryListState extends State<GroceryList> {
   void initState() {
     super.initState();
     _loadedItems = _loadItems();
+    _loadedItems.then((items) {
+      setState(() {
+        _groceryItems.clear();
+        _groceryItems.addAll(items);
+      });
+    });
   }
 
   Future<List<GroceryItem>> _loadItems() async {
-    final url = Uri.https(
-      'flutter-shopping-list-68fb2-default-rtdb.asia-southeast1.firebasedatabase.app',
-      'shopping-list.json',
-    );
+    final firebaseUrl = dotenv.env['FIREBASE_URL'];
+    final url = Uri.parse('$firebaseUrl/shopping-list.json');
 
     final response = await http.get(url);
 
@@ -66,12 +71,13 @@ class _GroceryListState extends State<GroceryList> {
       context,
     ).push<GroceryItem>(MaterialPageRoute(builder: (ctx) => const NewItem()));
 
-    // โหลดข้อมูลใหม่ทันทีหลังกลับมา
-    if (newItem == null) {
-      return;
-    }
+    if (newItem == null) return;
+
+    final loadedItems = await _loadItems();
+
     setState(() {
-      _loadedItems = _loadItems(); // โหลดใหม่หลังเพิ่ม
+      _groceryItems.clear();
+      _groceryItems.addAll(loadedItems);
     });
   }
 
@@ -82,10 +88,13 @@ class _GroceryListState extends State<GroceryList> {
       _groceryItems.remove(item);
     });
 
-    final url = Uri.https(
-      'flutter-shopping-list-68fb2-default-rtdb.asia-southeast1.firebasedatabase.app',
-      'shopping-list/${item.id}.json',
-    );
+    final firebaseUrl = dotenv.env['FIREBASE_URL'];
+    final url = Uri.parse('$firebaseUrl/shopping-list/${item.id}.json');
+
+    // final url = Uri.https(
+    //   'flutter-shopping-list-68fb2-default-rtdb.asia-southeast1.firebasedatabase.app',
+    //   'shopping-list/${item.id}.json',
+    // );
 
     final response = await http.delete(url);
     if (response.statusCode >= 400) {
@@ -100,44 +109,35 @@ class _GroceryListState extends State<GroceryList> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Your Grocery List'),
+        title: const Text(
+          'Your Product List',
+          
+        ),
         actions: [IconButton(onPressed: _addItem, icon: const Icon(Icons.add))],
       ),
-      body: FutureBuilder(
-        future: _loadedItems,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          if (snapshot.hasError) {
-            return Center(child: Text(snapshot.error.toString()));
-          }
-
-          if (snapshot.data!.isEmpty) {
-            return Center(child: Text('No items added yet.'));
-          }
-
-          return ListView.builder(
-            itemCount: snapshot.data!.length,
-            itemBuilder: (ctx, index) => Dismissible(
-              onDismissed: (direction) {
-                _removeItem(snapshot.data![index]);
+      body: _groceryItems.isEmpty
+          ? const Center(child: Text('No items added yet.'))
+          : ListView.builder(
+              itemCount: _groceryItems.length,
+              itemBuilder: (ctx, index) {
+                final item = _groceryItems[index];
+                return Dismissible(
+                  key: ValueKey(item.id),
+                  onDismissed: (direction) {
+                    _removeItem(item);
+                  },
+                  child: ListTile(
+                    title: Text(item.name),
+                    leading: Container(
+                      width: 24,
+                      height: 24,
+                      color: item.category.color,
+                    ),
+                    trailing: Text(item.quantity.toString()),
+                  ),
+                );
               },
-              key: ValueKey(snapshot.data![index].id),
-              child: ListTile(
-                title: Text(snapshot.data![index].name),
-                leading: Container(
-                  width: 24,
-                  height: 24,
-                  color: snapshot.data![index].category.color,
-                ),
-                trailing: Text(snapshot.data![index].quantity.toString()),
-              ),
             ),
-          );
-        },
-      ),
     );
   }
 }

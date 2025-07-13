@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 
 import 'package:shopping_list/data/categories.dart';
@@ -30,10 +31,8 @@ class _NewItemState extends State<NewItem> {
         _isSending = true;
       });
 
-      final url = Uri.https(
-        'flutter-shopping-list-68fb2-default-rtdb.asia-southeast1.firebasedatabase.app',
-        'shopping-list.json',
-      );
+      final firebaseUrl = dotenv.env['FIREBASE_URL'];
+      final url = Uri.parse('$firebaseUrl/shopping-list.json');
 
       final response = await http.post(
         url,
@@ -164,6 +163,21 @@ class _NewItemState extends State<NewItem> {
                     child: const Text('Reset'),
                   ),
                   ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green, // สีพื้นหลัง
+                      foregroundColor: Colors.white, // สีข้อความ
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 32,
+                        vertical: 16,
+                      ),
+                      textStyle: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
                     onPressed: _isSending ? null : _saveItem,
                     child: _isSending
                         ? const SizedBox(

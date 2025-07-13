@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:shopping_list/widgets/grocery_list.dart';
 
-void main() {
-  runApp(const MyApp());
+Future<void> main() async {
+  try {
+    await dotenv.load(fileName: "assets/.env"); // โหลด .env ก่อน runApp
+    runApp(const MyApp());
+  } catch (e) {
+    print('Load .env failed: $e');
+  }
 }
 
 class MyApp extends StatelessWidget {
